@@ -28,6 +28,7 @@ def test_db_connection():
     except Exception as e:
         return jsonify({"error": str(e)})
     
+########PERSONAS########
 
 # Insertar Personas
 @app.route('/personas', methods=['POST'])
@@ -135,22 +136,24 @@ def actualizar_persona(id):
     except Exception as e:
         return jsonify({"error": str(e)})
 
-# Eliminar Persona    
-@app.route('/personas/<int:id>', methods=['DELETE'])
-def eliminar_persona(id):
+# Inhabilitar Persona
+@app.route('/personas/<int:id>/inhabilitar', methods=['PUT'])
+def inhabilitar_persona(id_persona):
     try:
         conn = mysql.connector.connect(**config)
         cursor = conn.cursor()
 
-        cursor.execute("DELETE FROM Persona WHERE id = %s", (id,))
+        query = "UPDATE Persona SET activo = 0 WHERE id = %s"
+        cursor.execute(query, (id_persona,))
         conn.commit()
 
         cursor.close()
         conn.close()
 
-        return jsonify({"message": f"✅ Persona con ID {id} eliminada correctamente."})
+        return jsonify({"message": f"✅ Persona con ID {id} inhabilitada correctamente."})
     except Exception as e:
         return jsonify({"error": str(e)})
+
     
     
 # Obtener Persona por nombre_usuario_url (slug) con campos específicos
@@ -184,9 +187,226 @@ def obtener_persona_por_slug(nombre_usuario_url):
 
     except Exception as e:
         return jsonify({"error": str(e)})
+    
+    
+######## EMPRESAS ########
+
+# Insertar Empresa
+@app.route('/empresas', methods=['POST'])
+def insertar_empresa():
+    try:
+        data = request.json
+        conn = mysql.connector.connect(**config)
+        cursor = conn.cursor()
+
+        query = """
+        INSERT INTO Empresa (
+            nit, razon_social, nombre_usuario_url, direccion, telefono,
+            link_logo, link_ubicacion_maps, link_qr,
+            pantone1, pantone2
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        valores = (
+            data['nit'],
+            data['razon_social'],
+            data['nombre_usuario_url'],  # slug
+            data['direccion'],
+            data['telefono'],
+            data['link_logo'],
+            data['link_ubicacion_maps'],
+            data['link_qr'],
+            data['pantone1'],
+            data['pantone2']
+        )
+
+        cursor.execute(query, valores)
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({"message": "✅ Empresa insertada correctamente"})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
+# Obtener todas las Empresas
+@app.route('/empresas', methods=['GET'])
+def obtener_empresas():
+    try:
+        conn = mysql.connector.connect(**config)
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT * FROM Empresa")
+        empresas = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify(empresas)
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
+# Obtener Empresa por nombre_usuario_url (slug)
+@app.route('/empresas/slug/<string:nombre_usuario_url>', methods=['GET'])
+def obtener_empresa_por_slug(nombre_usuario_url):
+    try:
+        conn = mysql.connector.connect(**config)
+        cursor = conn.cursor(dictionary=True)
+
+        query = """
+        SELECT
+            nit, razon_social, nombre_usuario_url, direccion, telefono,
+            link_logo, link_ubicacion_maps, link_qr,
+            pantone1, pantone2
+        FROM Empresa
+        WHERE nombre_usuario_url = %s
+        """
+        cursor.execute(query, (nombre_usuario_url,))
+        empresa = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if empresa:
+            return jsonify(empresa)
+        else:
+            return jsonify({"error": "Empresa no encontrada"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
+# Actualizar Empresa
+@app.route('/empresas/<int:id_empresa>', methods=['PUT'])
+def actualizar_empresa(id_empresa):
+    try:
+        data = request.json
+        conn = mysql.connector.connect(**config)
+        cursor = conn.cursor()
+
+        query = """
+        UPDATE Empresa SET
+            nit=%s, razon_social=%s, nombre_usuario_url=%s, direccion=%s, telefono=%s,
+            link_logo=%s, link_ubicacion_maps=%s, link_qr=%s,
+            pantone1=%s, pantone2=%s
+        WHERE id_empresa=%s
+        """
+        valores = (
+            data['nit'],
+            data['razon_social'],
+            data['nombre_usuario_url'],
+            data['direccion'],
+            data['telefono'],
+            data['link_logo'],
+            data['link_ubicacion_maps'],
+            data['link_qr'],
+            data['pantone1'],
+            data['pantone2'],
+            id_empresa
+        )
+
+        cursor.execute(query, valores)
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({"message": "✅ Empresa actualizada correctamente"})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
+# Inhabilitar Empresa
+@app.route('/empresas/<int:id_empresa>/inhabilitar', methods=['PUT'])
+def inhabilitar_empresa(id_empresa):
+    try:
+        conn = mysql.connector.connect(**config)
+        cursor = conn.cursor()
+
+        query = "UPDATE Empresa SET activo = 0 WHERE id_empresa = %s"
+        cursor.execute(query, (id_empresa,))
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({"message": f"✅ Empresa con ID {id_empresa} inhabilitada correctamente."})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+    
+    # Endpoint para obtener Empresa y Persona desde un slug unificado
+@app.route('/personas/<string:slug_unificado>', methods=['GET'])
+def obtener_perfil(slug_unificado):
+    try:
+        # Dividir el slug: la primera parte es Empresa, el resto es Persona
+        partes = slug_unificado.split('-', 1)
+        if len(partes) != 2:
+            return jsonify({"error": "Slug inválido. Formato esperado: empresa-persona"}), 400
+
+        slug_empresa, slug_persona = partes[0], partes[1]
+
+        conn = mysql.connector.connect(**config)
+        cursor = conn.cursor(dictionary=True)
+
+        # Consultar Empresa
+        query_empresa = """
+            SELECT
+                id_empresa,
+                nit,
+                razon_social,
+                nombre_usuario_url,
+                direccion,
+                telefono,
+                link_logo,
+                link_ubicacion_maps,
+                link_qr,
+                pantone1,
+                pantone2
+            FROM Empresa
+            WHERE nombre_usuario_url = %s
+            LIMIT 1
+        """
+        cursor.execute(query_empresa, (slug_empresa,))
+        empresa = cursor.fetchone()
+
+        # Consultar Persona
+        query_persona = """
+            SELECT 
+                id_persona,
+                nombre,
+                cargo,
+                celular,
+                correo_electronico,
+                link_whatsapp,
+                link_foto,
+                nombre_usuario_url
+            FROM Persona
+            WHERE nombre_usuario_url = %s
+            LIMIT 1
+        """
+        cursor.execute(query_persona, (slug_persona,))
+        persona = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if not empresa:
+            return jsonify({"error": "Empresa no encontrada"}), 404
+        if not persona:
+            return jsonify({"error": "Persona no encontrada"}), 404
+
+        return jsonify({
+            "empresa": empresa,
+            "persona": persona
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 
     
+
+########PRUEBA DE CONEXION########
     
     
 @app.route('/prueba', methods=['GET'])
