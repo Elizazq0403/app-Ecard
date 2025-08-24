@@ -201,10 +201,10 @@ def insertar_empresa():
 
         query = """
         INSERT INTO Empresa (
-            nit, razon_social, nombre_usuario_url, direccion, telefono,
+            nit, razon_social, nombre_usuario_url, direccion, telefono, correo_electronico,
             link_logo, link_ubicacion_maps, link_qr,
             pantone1, pantone2
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         valores = (
             data['nit'],
@@ -212,12 +212,14 @@ def insertar_empresa():
             data['nombre_usuario_url'],  # slug
             data['direccion'],
             data['telefono'],
+            data['correo_electronico'],   # 👈 agregado
             data['link_logo'],
             data['link_ubicacion_maps'],
             data['link_qr'],
             data['pantone1'],
             data['pantone2']
         )
+
 
         cursor.execute(query, valores)
         conn.commit()
@@ -256,12 +258,13 @@ def obtener_empresa_por_slug(nombre_usuario_url):
 
         query = """
         SELECT
-            nit, razon_social, nombre_usuario_url, direccion, telefono,
+            nit, razon_social, nombre_usuario_url, direccion, telefono, correo_electronico,
             link_logo, link_ubicacion_maps, link_qr,
             pantone1, pantone2
         FROM Empresa
         WHERE nombre_usuario_url = %s
         """
+
         cursor.execute(query, (nombre_usuario_url,))
         empresa = cursor.fetchone()
 
@@ -286,7 +289,7 @@ def actualizar_empresa(id_empresa):
 
         query = """
         UPDATE Empresa SET
-            nit=%s, razon_social=%s, nombre_usuario_url=%s, direccion=%s, telefono=%s,
+            nit=%s, razon_social=%s, nombre_usuario_url=%s, direccion=%s, telefono=%s, correo_electronico=%s,
             link_logo=%s, link_ubicacion_maps=%s, link_qr=%s,
             pantone1=%s, pantone2=%s
         WHERE id_empresa=%s
@@ -297,13 +300,15 @@ def actualizar_empresa(id_empresa):
             data['nombre_usuario_url'],
             data['direccion'],
             data['telefono'],
+            data['correo_electronico'],   # 👈 agregado
             data['link_logo'],
             data['link_ubicacion_maps'],
             data['link_qr'],
             data['pantone1'],
             data['pantone2'],
             id_empresa
-        )
+)
+
 
         cursor.execute(query, valores)
         conn.commit()
@@ -356,6 +361,7 @@ def obtener_perfil(slug_unificado):
                 nombre_usuario_url,
                 direccion,
                 telefono,
+                correo_electronico,   -- 👈 agregado
                 link_logo,
                 link_ubicacion_maps,
                 link_qr,
@@ -365,6 +371,7 @@ def obtener_perfil(slug_unificado):
             WHERE nombre_usuario_url = %s
             LIMIT 1
         """
+
         cursor.execute(query_empresa, (slug_empresa,))
         empresa = cursor.fetchone()
 
