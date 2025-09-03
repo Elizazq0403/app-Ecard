@@ -361,7 +361,7 @@ def obtener_perfil(slug_unificado):
                 nombre_usuario_url,
                 direccion,
                 telefono,
-                correo_electronico,   -- 👈 agregado
+                correo_electronico,  
                 link_logo,
                 link_ubicacion_maps,
                 link_qr,
@@ -410,8 +410,31 @@ def obtener_perfil(slug_unificado):
         return jsonify({"error": str(e)}), 500
 
 
-
+########SESIONES########
     
+
+@app.route("/sesiones/<int:empresa_id>", methods=["GET"])
+def obtener_sesiones(empresa_id):
+    try:
+        conn = mysql.connector.connect(**config)
+        cursor = conn.cursor(dictionary=True)
+
+        query = "SELECT numero_sesion, titulo, descripcion FROM Sesiones WHERE empresa_id = %s ORDER BY numero_sesion"
+        cursor.execute(query, (empresa_id,))
+        sesiones = cursor.fetchall()
+
+        return jsonify(sesiones), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+
+
 
 ########PRUEBA DE CONEXION########
     
