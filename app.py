@@ -1,6 +1,8 @@
 from flask import Flask, jsonify, request 
 import mysql.connector
 from flask_cors import CORS  
+from flask import Response
+
 
 app = Flask(__name__)
 
@@ -410,9 +412,84 @@ def obtener_perfil(slug_unificado):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/contacto/<string:slug_unificado>.vcf', methods=['GET'])
+def generar_vcf(slug_unificado):
+    try:
+        partes = slug_unificado.split('-', 1)
+        if len(partes) != 2:
+            return jsonify({"error": "Slug inválido. Formato esperado: empresa-persona"}), 400
+
+        slug_empresa, slug_persona = partes[0], partes[1]
+
+        conn = mysql.connector.connect(**config)
+        cursor = conn.cursor(dictionary=True)
+
+        # Consultar Empresa
+        query_empresa = """
+            SELECT
+                id_empresa,
+                razon_social,
+                direccion,
+                telefono,
+                correo_electronico,
+                link_logo,
+                link_ubicacion_maps
+            FROM Empresa
+            WHERE nombre_usuario_url = %s
+            LIMIT 1
+        """
+        cursor.execute(query_empresa, (slug_empresa,))
+        empresa = cursor.fetchone()
+
+        # Consultar Persona
+        query_persona = """
+            SELECT 
+                id_persona,
+                nombre,
+                cargo,
+                celular,
+                correo_electronico,
+                nombre_usuario_url
+            FROM Persona
+            WHERE nombre_usuario_url = %s
+            LIMIT 1
+        """
+        cursor.execute(query_persona, (slug_persona,))
+        persona = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if not empresa:
+            return jsonify({"error": "Empresa no encontrada"}), 404
+        if not persona:
+            return jsonify({"error": "Persona no encontrada"}), 404
+
+        # Construcción del VCF
+        vcf = f"""BEGIN:VCARD
+        VERSION:3.0
+        N:;{persona['nombre']};;;
+        FN:{persona['nombre']}
+        ORG:{empresa['razon_social']}
+        TITLE:{persona['cargo']}
+        TEL;TYPE=CELL:{persona['celular']}
+        EMAIL;TYPE=WORK:{persona['correo_electronico']}
+        ADR;TYPE=WORK:;;{empresa['direccion']}
+        URL:{empresa['link_ubicacion_maps'] if empresa['link_ubicacion_maps'] else ""}
+        END:VCARD
+        """
+
+        response = Response(vcf)
+        response.headers["Content-Type"] = "text/vcard; charset=utf-8"
+        response.headers["Content-Disposition"] = f'attachment; filename="{persona["nombre"]}.vcf"'
+        return response
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 ########SESIONES########
     
-
+#OBTENER SESIONES
 @app.route("/sesiones/<int:empresa_id>", methods=["GET"])
 def obtener_sesiones(empresa_id):
     try:
@@ -424,6 +501,42 @@ def obtener_sesiones(empresa_id):
         sesiones = cursor.fetchall()
 
         return jsonify(sesiones), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+            
+            
+########PRODUCTOS########            
+
+#OBTENER PRODUCTOS
+@app.route("/productos/<int:empresa_id>", methods=["GET"])
+def obtener_productos(empresa_id):
+    try:
+        conn = mysql.connector.connect(**config)
+        cursor = conn.cursor(dictionary=True)
+
+        query = """
+            SELECT 
+                numero_producto, 
+                titulo, 
+                descripcion1, 
+                link_producto, 
+                descripcion2, 
+                link_imagen_producto
+            FROM Productos 
+            WHERE empresa_id = %s 
+            ORDER BY numero_producto
+        """
+        cursor.execute(query, (empresa_id,))
+        productos = cursor.fetchall()
+
+        return jsonify(productos), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
