@@ -1,7 +1,9 @@
+import os  # noqa: F401 - Para os.getenv()
 from flask import Flask, jsonify, request 
 import mysql.connector
 from flask_cors import CORS  
 from flask import Response
+
 
 
 app = Flask(__name__)
@@ -9,13 +11,22 @@ app = Flask(__name__)
 CORS(app)
 
 # Datos de conexión
+
+# ✅ Las credenciales OCULTAS en Railway
 config = {
+    "host": os.getenv('DB_HOST'),      # ← Railway inserta "162.241.61.135"
+    "user": os.getenv('DB_USER'),      # ← Railway inserta "asherind_web-z"  
+    "password": os.getenv('DB_PASSWORD'), # ← Railway inserta "Web-Z2025*"
+    "database": os.getenv('DB_NAME')   # ← Railway inserta "asherind_web-z"
+}
+
+'''config = {
     "host": "162.241.61.135",
     "user": "asherind_web-z",
     "password": "Web-Z2025*",
     "database": "asherind_web-z",
     "port": 3306
-}
+}'''
 
 @app.route('/')
 def index():
