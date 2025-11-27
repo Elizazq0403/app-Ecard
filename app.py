@@ -13,20 +13,21 @@ CORS(app)
 # Datos de conexión
 
 # ✅ Las credenciales OCULTAS en Railway
+'''
 config = {
     "host": os.getenv('DB_HOST'),      # ← Railway inserta "162.241.61.135"
     "user": os.getenv('DB_USER'),      # ← Railway inserta "asherind_web-z"  
     "password": os.getenv('DB_PASSWORD'), # ← Railway inserta "Web-Z2025*"
     "database": os.getenv('DB_NAME')   # ← Railway inserta "asherind_web-z"
-}
-
-'''config = {
+} '''
+''' '''
+config = {
     "host": "162.241.61.135",
     "user": "asherind_web-z",
     "password": "Web-Z2025*",
     "database": "asherind_web-z",
     "port": 3306
-}'''
+}
 
 @app.route('/')
 def index():
@@ -398,7 +399,10 @@ def obtener_perfil(slug_unificado):
                 correo_electronico,
                 link_whatsapp,
                 link_foto,
-                nombre_usuario_url
+                nombre_usuario_url,
+                link_facebook,      
+                link_instagram,     
+                link_pagina_web     
             FROM Persona
             WHERE nombre_usuario_url = %s
             LIMIT 1
