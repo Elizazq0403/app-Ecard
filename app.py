@@ -13,21 +13,21 @@ CORS(app)
 # Datos de conexión
 
 # ✅ Las credenciales OCULTAS en Railway
-''' '''
+''' 
 config = {
     "host": os.getenv('DB_HOST'),      # ← Railway inserta "162.241.61.135"
     "user": os.getenv('DB_USER'),      # ← Railway inserta "asherind_web-z"  
     "password": os.getenv('DB_PASSWORD'), # ← Railway inserta "Web-Z2025*"
     "database": os.getenv('DB_NAME')   # ← Railway inserta "asherind_web-z"
-} 
-''' 
+} '''
+''' '''
 config = {
     "host": "162.241.61.135",
     "user": "asherind_web-z",
     "password": "Web-Z2025*",
     "database": "asherind_web-z",
     "port": 3306
-}'''
+}
 
 @app.route('/')
 def index():
@@ -442,12 +442,10 @@ def generar_vcf(slug_unificado):
         # Consultar Empresa
         query_empresa = """
             SELECT
-                id_empresa,
                 razon_social,
                 direccion,
                 telefono,
                 correo_electronico,
-                link_logo,
                 link_ubicacion_maps
             FROM Empresa
             WHERE nombre_usuario_url = %s
@@ -459,12 +457,10 @@ def generar_vcf(slug_unificado):
         # Consultar Persona
         query_persona = """
             SELECT 
-                id_persona,
                 nombre,
                 cargo,
                 celular,
-                correo_electronico,
-                nombre_usuario_url
+                correo_electronico
             FROM Persona
             WHERE nombre_usuario_url = %s
             LIMIT 1
@@ -480,26 +476,43 @@ def generar_vcf(slug_unificado):
         if not persona:
             return jsonify({"error": "Persona no encontrada"}), 404
 
-        # Construcción del VCF
-        vcf = f"""BEGIN:VCARD
-        VERSION:3.0
-        N:;{persona['nombre']};;;
-        FN:{persona['nombre']}
-        ORG:{empresa['razon_social']}
-        TITLE:{persona['cargo']}
-        TEL;TYPE=CELL:{persona['celular']}
-        EMAIL;TYPE=WORK:{persona['correo_electronico']}
-        ADR;TYPE=WORK:;;{empresa['direccion']}
-        URL:{empresa['link_ubicacion_maps'] if empresa['link_ubicacion_maps'] else ""}
-        END:VCARD
-        """
+        # Limpiar y preparar datos
+        nombre = (persona.get('nombre') or '').strip()
+        cargo = (persona.get('cargo') or '').strip()
+        celular = (persona.get('celular') or '').strip()
+        email = (persona.get('correo_electronico') or '').strip()
+        org = (empresa.get('razon_social') or '').strip()
+        direccion = (empresa.get('direccion') or '').strip()
+        
+        # Construir vCard sin URL problemática por ahora
+        vcf_lines = [
+            "BEGIN:VCARD",
+            "VERSION:3.0",
+            f"N:;{nombre};;;",
+            f"FN:{nombre}",
+            f"ORG:{org}",
+            f"TITLE:{cargo}",
+            f"TEL;TYPE=CELL:{celular}",
+            f"EMAIL;TYPE=WORK:{email}",
+            f"ADR;TYPE=WORK:;;{direccion}",
+            "END:VCARD"
+        ]
+        
+        vcf_content = "\n".join(vcf_lines)
+        
+        print("✅ VCF generado correctamente")
+        print(vcf_content)
 
-        response = Response(vcf)
-        response.headers["Content-Type"] = "text/vcard; charset=utf-8"
-        response.headers["Content-Disposition"] = f'attachment; filename="{persona["nombre"]}.vcf"'
+        response = Response(
+            vcf_content.encode('utf-8'),
+            mimetype='text/vcard; charset=utf-8'
+        )
+        response.headers["Content-Disposition"] = f'attachment; filename="{nombre.replace(" ", "_")}.vcf"'
+        
         return response
 
     except Exception as e:
+        print(f"❌ Error generando vCard: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 ########SESIONES########
